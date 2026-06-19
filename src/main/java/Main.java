@@ -37,6 +37,7 @@ public class Main {
         String redirectOutFile = null;
         String redirectErrFile = null;
         boolean appendOut = false;
+        boolean appendErr = false;
         for (int i = args.size() - 2; i >= 0; i--) {
             String arg = args.get(i);
             if (arg.equals(">") || arg.equals("1>")) {
@@ -49,6 +50,11 @@ public class Main {
                 args = new ArrayList<>(args.subList(0, i));
             } else if (arg.equals("2>")) {
                 redirectErrFile = args.get(i + 1);
+                appendErr = false;
+                args = new ArrayList<>(args.subList(0, i));
+            } else if (arg.equals("2>>")) {
+                redirectErrFile = args.get(i + 1);
+                appendErr = true;
                 args = new ArrayList<>(args.subList(0, i));
             }
         }
@@ -71,7 +77,7 @@ public class Main {
             try {
                 File f = new File(redirectErrFile);
                 if (f.getParentFile() != null) f.getParentFile().mkdirs();
-                System.setErr(new PrintStream(new FileOutputStream(f)));
+                System.setErr(new PrintStream(new FileOutputStream(f, appendErr)));
             } catch (Exception e) {
                 System.out.println("Error setting up error redirection: " + e.getMessage());
                 return;
@@ -98,7 +104,7 @@ public class Main {
                 default:
                     String executablePath = getExecutablePath(command);
                     if (executablePath != null) {
-                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut);
+                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut, appendErr);
                     } else {
                         System.out.println(command + ": command not found");
                     }
@@ -257,7 +263,7 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut) {
+    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut, boolean appendErr) {
         try {
             List<String> commandList = new ArrayList<>();
             commandList.add(command);
@@ -276,7 +282,11 @@ public class Main {
             }
             
             if (redirectErrFile != null) {
-                pb.redirectError(new File(redirectErrFile));
+                if (appendErr) {
+                    pb.redirectError(ProcessBuilder.Redirect.appendTo(new File(redirectErrFile)));
+                } else {
+                    pb.redirectError(new File(redirectErrFile));
+                }
             } else {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             }
