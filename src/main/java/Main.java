@@ -34,26 +34,40 @@ public class Main {
         String command = parsedArgs.get(0);
         List<String> args = parsedArgs.subList(1, parsedArgs.size());
 
-        String redirectFile = null;
+        String redirectOutFile = null;
+        String redirectErrFile = null;
         for (int i = args.size() - 2; i >= 0; i--) {
             String arg = args.get(i);
             if (arg.equals(">") || arg.equals("1>")) {
-                redirectFile = args.get(i + 1);
+                redirectOutFile = args.get(i + 1);
                 args = new ArrayList<>(args.subList(0, i));
-                break;
+            } else if (arg.equals("2>")) {
+                redirectErrFile = args.get(i + 1);
+                args = new ArrayList<>(args.subList(0, i));
             }
         }
 
         PrintStream originalOut = System.out;
-        if (redirectFile != null) {
+        PrintStream originalErr = System.err;
+        
+        if (redirectOutFile != null) {
             try {
-                File f = new File(redirectFile);
-                if (f.getParentFile() != null) {
-                    f.getParentFile().mkdirs();
-                }
+                File f = new File(redirectOutFile);
+                if (f.getParentFile() != null) f.getParentFile().mkdirs();
                 System.setOut(new PrintStream(new FileOutputStream(f)));
             } catch (Exception e) {
                 System.out.println("Error setting up redirection: " + e.getMessage());
+                return;
+            }
+        }
+
+        if (redirectErrFile != null) {
+            try {
+                File f = new File(redirectErrFile);
+                if (f.getParentFile() != null) f.getParentFile().mkdirs();
+                System.setErr(new PrintStream(new FileOutputStream(f)));
+            } catch (Exception e) {
+                System.out.println("Error setting up error redirection: " + e.getMessage());
                 return;
             }
         }
@@ -78,15 +92,19 @@ public class Main {
                 default:
                     String executablePath = getExecutablePath(command);
                     if (executablePath != null) {
-                        executeExternalProgram(command, args, redirectFile);
+                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile);
                     } else {
                         System.out.println(command + ": command not found");
                     }
             }
         } finally {
-            if (redirectFile != null) {
+            if (redirectOutFile != null) {
                 System.out.flush();
                 System.setOut(originalOut);
+            }
+            if (redirectErrFile != null) {
+                System.err.flush();
+                System.setErr(originalErr);
             }
         }
     }
@@ -233,19 +251,28 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String command, List<String> args, String redirectFile) {
+    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile) {
         try {
             List<String> commandList = new ArrayList<>();
             commandList.add(command);
             commandList.addAll(args);
             ProcessBuilder pb = new ProcessBuilder(commandList);
             pb.directory(new File(System.getProperty("user.dir")));
-            if (redirectFile != null) {
-                pb.redirectOutput(new File(redirectFile));
-                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            
+            if (redirectOutFile != null) {
+                pb.redirectOutput(new File(redirectOutFile));
             } else {
-                pb.inheritIO();
+                pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             }
+            
+            if (redirectErrFile != null) {
+                pb.redirectError(new File(redirectErrFile));
+            } else {
+                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            }
+            
+            pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
+            
             Process process = pb.start();
             process.waitFor();
         } catch (Exception e) {
