@@ -16,9 +16,10 @@ public class Main {
             if (input.trim().isEmpty()) {
                 continue;
             }
-            
+
             executeCommand(input);
         }
+        scanner.close();
     }
 
     private static void executeCommand(String input) {
@@ -35,6 +36,9 @@ public class Main {
                 break;
             case "type":
                 executeType(args);
+                break;
+            case "pwd":
+                executePwd(args);
                 break;
             default:
                 String executablePath = getExecutablePath(command);
@@ -62,11 +66,16 @@ public class Main {
         System.out.println(args);
     }
 
+    private static void executePwd(String args) {
+        System.out.println(System.getProperty("user.dir"));
+    }
+
     private static void executeType(String args) {
         switch (args) {
             case "echo":
             case "exit":
             case "type":
+            case "pwd":
                 System.out.println(args + " is a shell builtin");
                 return;
         }
