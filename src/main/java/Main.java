@@ -1,3 +1,4 @@
+import java.io.File;
 import java.util.Scanner;
 
 public class Main {
@@ -59,9 +60,20 @@ public class Main {
             case "exit":
             case "type":
                 System.out.println(args + " is a shell builtin");
-                break;
-            default:
-                System.out.println(args + ": not found");
+                return;
         }
+
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null) {
+            for (String p : pathEnv.split(File.pathSeparator)) {
+                File file = new File(p, args);
+                if (file.isFile() && file.canExecute()) {
+                    System.out.println(args + " is " + file.getAbsolutePath());
+                    return;
+                }
+            }
+        }
+
+        System.out.println(args + ": not found");
     }
 }
