@@ -1,4 +1,6 @@
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,29 +34,60 @@ public class Main {
         String command = parsedArgs.get(0);
         List<String> args = parsedArgs.subList(1, parsedArgs.size());
 
-        switch (command) {
-            case "exit":
-                executeExit(args);
+        String redirectFile = null;
+        for (int i = args.size() - 2; i >= 0; i--) {
+            String arg = args.get(i);
+            if (arg.equals(">") || arg.equals("1>")) {
+                redirectFile = args.get(i + 1);
+                args = new ArrayList<>(args.subList(0, i));
                 break;
-            case "echo":
-                executeEcho(args);
-                break;
-            case "type":
-                executeType(args);
-                break;
-            case "pwd":
-                executePwd(args);
-                break;
-            case "cd":
-                executeCd(args);
-                break;
-            default:
-                String executablePath = getExecutablePath(command);
-                if (executablePath != null) {
-                    executeExternalProgram(command, args);
-                } else {
-                    System.out.println(command + ": command not found");
+            }
+        }
+
+        PrintStream originalOut = System.out;
+        if (redirectFile != null) {
+            try {
+                File f = new File(redirectFile);
+                if (f.getParentFile() != null) {
+                    f.getParentFile().mkdirs();
                 }
+                System.setOut(new PrintStream(new FileOutputStream(f)));
+            } catch (Exception e) {
+                System.out.println("Error setting up redirection: " + e.getMessage());
+                return;
+            }
+        }
+
+        try {
+            switch (command) {
+                case "exit":
+                    executeExit(args);
+                    break;
+                case "echo":
+                    executeEcho(args);
+                    break;
+                case "type":
+                    executeType(args);
+                    break;
+                case "pwd":
+                    executePwd(args);
+                    break;
+                case "cd":
+                    executeCd(args);
+                    break;
+                default:
+                    String executablePath = getExecutablePath(command);
+                    if (executablePath != null) {
+                        executeExternalProgram(command, args, redirectFile);
+                    } else {
+                        System.out.println(command + ": command not found");
+                    }
+            }
+        } finally {
+            if (redirectFile != null) {
+                System.out.flush();
+                System.setOut(originalOut);
+            }
         }
     }
 
@@ -200,18 +233,23 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String command, List<String> args) {
+    private static void executeExternalProgram(String command, List<String> args, String redirectFile) {
         try {
             List<String> commandList = new ArrayList<>();
             commandList.add(command);
             commandList.addAll(args);
             ProcessBuilder pb = new ProcessBuilder(commandList);
             pb.directory(new File(System.getProperty("user.dir")));
-            pb.inheritIO();
+            if (redirectFile != null) {
+                pb.redirectOutput(new File(redirectFile));
+                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            } else {
+                pb.inheritIO();
+            }
             Process process = pb.start();
             process.waitFor();
         } catch (Exception e) {
-            System.out.println("Error executing program: " + e.getMessage());
+            System.err.println("Error executing program: " + e.getMessage());
         }
     }
 }
