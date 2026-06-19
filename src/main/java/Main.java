@@ -39,7 +39,7 @@ public class Main {
             default:
                 String executablePath = getExecutablePath(command);
                 if (executablePath != null) {
-                    executeExternalProgram(executablePath, args);
+                    executeExternalProgram(command, args);
                 } else {
                     System.out.println(input + ": command not found");
                 }
@@ -92,10 +92,10 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String executablePath, String argsStr) {
+    private static void executeExternalProgram(String command, String argsStr) {
         try {
             List<String> commandList = new ArrayList<>();
-            commandList.add(executablePath);
+            commandList.add(command);
             if (!argsStr.trim().isEmpty()) {
                 commandList.addAll(Arrays.asList(argsStr.trim().split(" +")));
             }
