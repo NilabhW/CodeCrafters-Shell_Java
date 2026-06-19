@@ -75,7 +75,19 @@ public class Main {
                     currentArg.append(c);
                 }
             } else if (inDoubleQuote) {
-                if (c == '\"') {
+                if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        char nextChar = input.charAt(i + 1);
+                        if (nextChar == '\\' || nextChar == '"' || nextChar == '$' || nextChar == '`' || nextChar == '\n') {
+                            currentArg.append(nextChar);
+                            i++;
+                        } else {
+                            currentArg.append(c);
+                        }
+                    } else {
+                        currentArg.append(c);
+                    }
+                } else if (c == '\"') {
                     inDoubleQuote = false;
                 } else {
                     currentArg.append(c);
