@@ -29,6 +29,9 @@ public class Main {
             case "echo":
                 executeEcho(args);
                 break;
+            case "type":
+                executeType(args);
+                break;
             default:
                 System.out.println(input + ": command not found");
         }
@@ -48,5 +51,17 @@ public class Main {
 
     private static void executeEcho(String args) {
         System.out.println(args);
+    }
+
+    private static void executeType(String args) {
+        switch (args) {
+            case "echo":
+            case "exit":
+            case "type":
+                System.out.println(args + " is a shell builtin");
+                break;
+            default:
+                System.out.println(args + ": not found");
+        }
     }
 }
