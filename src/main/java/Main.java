@@ -77,6 +77,13 @@ public class Main {
     }
 
     private static void executeCd(String args) {
+        if (args.startsWith("~")) {
+            String home = System.getenv("HOME");
+            if (home != null) {
+                args = home + args.substring(1);
+            }
+        }
+
         String currentDir = System.getProperty("user.dir");
         Path pathArg = Paths.get(args);
         Path newPath = pathArg.isAbsolute() ? pathArg.normalize() : Paths.get(currentDir, args).normalize();
