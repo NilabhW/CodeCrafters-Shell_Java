@@ -62,6 +62,7 @@ public class Main {
         List<String> args = new ArrayList<>();
         StringBuilder currentArg = new StringBuilder();
         boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
         boolean inWord = false;
 
         for (int i = 0; i < input.length(); i++) {
@@ -73,9 +74,18 @@ public class Main {
                 } else {
                     currentArg.append(c);
                 }
+            } else if (inDoubleQuote) {
+                if (c == '\"') {
+                    inDoubleQuote = false;
+                } else {
+                    currentArg.append(c);
+                }
             } else {
                 if (c == '\'') {
                     inSingleQuote = true;
+                    inWord = true;
+                } else if (c == '\"') {
+                    inDoubleQuote = true;
                     inWord = true;
                 } else if (c == ' ' || c == '\t') {
                     if (inWord) {
