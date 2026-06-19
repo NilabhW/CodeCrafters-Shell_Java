@@ -1,4 +1,7 @@
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -34,7 +37,12 @@ public class Main {
                 executeType(args);
                 break;
             default:
-                System.out.println(input + ": command not found");
+                String executablePath = getExecutablePath(command);
+                if (executablePath != null) {
+                    executeExternalProgram(executablePath, args);
+                } else {
+                    System.out.println(input + ": command not found");
+                }
         }
     }
 
@@ -62,18 +70,41 @@ public class Main {
                 System.out.println(args + " is a shell builtin");
                 return;
         }
-
-        String pathEnv = System.getenv("PATH");
-        if (pathEnv != null) {
-            for (String p : pathEnv.split(File.pathSeparator)) {
-                File file = new File(p, args);
-                if (file.isFile() && file.canExecute()) {
-                    System.out.println(args + " is " + file.getAbsolutePath());
-                    return;
-                }
-            }
+        String executablePath = getExecutablePath(args);
+        if (executablePath != null) {
+            System.out.println(args + " is " + executablePath);
+            return;
         }
 
         System.out.println(args + ": not found");
+    }
+
+    private static String getExecutablePath(String command) {
+        String pathEnv = System.getenv("PATH");
+        if (pathEnv != null) {
+            for (String p : pathEnv.split(File.pathSeparator)) {
+                File file = new File(p, command);
+                if (file.isFile() && file.canExecute()) {
+                    return file.getAbsolutePath();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static void executeExternalProgram(String executablePath, String argsStr) {
+        try {
+            List<String> commandList = new ArrayList<>();
+            commandList.add(executablePath);
+            if (!argsStr.trim().isEmpty()) {
+                commandList.addAll(Arrays.asList(argsStr.trim().split(" +")));
+            }
+            ProcessBuilder pb = new ProcessBuilder(commandList);
+            pb.inheritIO();
+            Process process = pb.start();
+            process.waitFor();
+        } catch (Exception e) {
+            System.out.println("Error executing program: " + e.getMessage());
+        }
     }
 }
