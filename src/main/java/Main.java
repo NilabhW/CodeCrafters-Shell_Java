@@ -81,7 +81,13 @@ public class Main {
                     currentArg.append(c);
                 }
             } else {
-                if (c == '\'') {
+                if (c == '\\') {
+                    if (i + 1 < input.length()) {
+                        currentArg.append(input.charAt(i + 1));
+                        i++;
+                        inWord = true;
+                    }
+                } else if (c == '\'') {
                     inSingleQuote = true;
                     inWord = true;
                 } else if (c == '\"') {
