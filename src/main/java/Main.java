@@ -1,4 +1,7 @@
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -74,9 +77,12 @@ public class Main {
     }
 
     private static void executeCd(String args) {
-        File dir = new File(args);
-        if (dir.exists() && dir.isDirectory()) {
-            System.setProperty("user.dir", dir.getAbsolutePath());
+        String currentDir = System.getProperty("user.dir");
+        Path pathArg = Paths.get(args);
+        Path newPath = pathArg.isAbsolute() ? pathArg.normalize() : Paths.get(currentDir, args).normalize();
+        
+        if (Files.isDirectory(newPath)) {
+            System.setProperty("user.dir", newPath.toString());
         } else {
             System.out.println("cd: " + args + ": No such file or directory");
         }
