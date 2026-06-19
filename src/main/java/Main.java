@@ -40,6 +40,9 @@ public class Main {
             case "pwd":
                 executePwd(args);
                 break;
+            case "cd":
+                executeCd(args);
+                break;
             default:
                 String executablePath = getExecutablePath(command);
                 if (executablePath != null) {
@@ -70,12 +73,22 @@ public class Main {
         System.out.println(System.getProperty("user.dir"));
     }
 
+    private static void executeCd(String args) {
+        File dir = new File(args);
+        if (dir.exists() && dir.isDirectory()) {
+            System.setProperty("user.dir", dir.getAbsolutePath());
+        } else {
+            System.out.println("cd: " + args + ": No such file or directory");
+        }
+    }
+
     private static void executeType(String args) {
         switch (args) {
             case "echo":
             case "exit":
             case "type":
             case "pwd":
+            case "cd":
                 System.out.println(args + " is a shell builtin");
                 return;
         }
@@ -109,6 +122,7 @@ public class Main {
                 commandList.addAll(Arrays.asList(argsStr.trim().split(" +")));
             }
             ProcessBuilder pb = new ProcessBuilder(commandList);
+            pb.directory(new File(System.getProperty("user.dir")));
             pb.inheritIO();
             Process process = pb.start();
             process.waitFor();
