@@ -101,6 +101,8 @@ public class Main {
                 case "cd":
                     executeCd(args);
                     break;
+                case "jobs":
+                    break;
                 default:
                     String executablePath = getExecutablePath(command);
                     if (executablePath != null) {
@@ -238,6 +240,7 @@ public class Main {
             case "type":
             case "pwd":
             case "cd":
+            case "jobs":
                 System.out.println(typeArg + " is a shell builtin");
                 return;
         }
