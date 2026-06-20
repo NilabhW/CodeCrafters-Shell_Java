@@ -10,6 +10,22 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
+    static class Job {
+        int id;
+        long pid;
+        String command;
+        String status;
+
+        public Job(int id, long pid, String command, String status) {
+            this.id = id;
+            this.pid = pid;
+            this.command = command;
+            this.status = status;
+        }
+    }
+
+    static List<Job> backgroundJobs = new ArrayList<>();
+
     public static void main(String[] args) throws Exception {
 
         Scanner scanner = new Scanner(System.in);
@@ -110,11 +126,15 @@ public class Main {
                     executeCd(args);
                     break;
                 case "jobs":
+                    for (Job job : backgroundJobs) {
+                        String statusPadded = String.format("%-24s", job.status);
+                        System.out.printf("[%d]+  %s%s\n", job.id, statusPadded, job.command);
+                    }
                     break;
                 default:
                     String executablePath = getExecutablePath(command);
                     if (executablePath != null) {
-                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut, appendErr, runInBackground);
+                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut, appendErr, runInBackground, input);
                     } else {
                         System.out.println(command + ": command not found");
                     }
@@ -274,7 +294,7 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut, boolean appendErr, boolean runInBackground) {
+    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut, boolean appendErr, boolean runInBackground, String originalInput) {
         try {
             List<String> commandList = new ArrayList<>();
             commandList.add(command);
@@ -306,7 +326,9 @@ public class Main {
             
             Process process = pb.start();
             if (runInBackground) {
-                System.out.println("[1] " + process.pid());
+                int jobId = backgroundJobs.size() + 1;
+                System.out.println("[" + jobId + "] " + process.pid());
+                backgroundJobs.add(new Job(jobId, process.pid(), originalInput.trim(), "Running"));
             } else {
                 process.waitFor();
             }
