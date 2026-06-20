@@ -126,9 +126,16 @@ public class Main {
                     executeCd(args);
                     break;
                 case "jobs":
-                    for (Job job : backgroundJobs) {
+                    for (int i = 0; i < backgroundJobs.size(); i++) {
+                        Job job = backgroundJobs.get(i);
+                        char marker = ' ';
+                        if (i == backgroundJobs.size() - 1) {
+                            marker = '+';
+                        } else if (i == backgroundJobs.size() - 2) {
+                            marker = '-';
+                        }
                         String statusPadded = String.format("%-24s", job.status);
-                        System.out.printf("[%d]+  %s%s\n", job.id, statusPadded, job.command);
+                        System.out.printf("[%d]%c  %s%s\n", job.id, marker, statusPadded, job.command);
                     }
                     break;
                 default:
