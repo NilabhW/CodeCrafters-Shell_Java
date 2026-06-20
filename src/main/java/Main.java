@@ -33,6 +33,7 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
         while (true) {
+            printAndReapJobs(true);
             System.out.print("$ ");
             if (!scanner.hasNextLine())
                 break;
@@ -44,6 +45,35 @@ public class Main {
             executeCommand(input);
         }
         scanner.close();
+    }
+
+    private static void printAndReapJobs(boolean onlyPrintDone) {
+        List<Job> toRemove = new ArrayList<>();
+        for (int i = 0; i < backgroundJobs.size(); i++) {
+            Job job = backgroundJobs.get(i);
+            char marker = ' ';
+            if (i == backgroundJobs.size() - 1) {
+                marker = '+';
+            } else if (i == backgroundJobs.size() - 2) {
+                marker = '-';
+            }
+
+            boolean isDone = false;
+            if (!job.process.isAlive()) {
+                job.status = "Done";
+                if (job.command.endsWith("&")) {
+                    job.command = job.command.substring(0, job.command.lastIndexOf('&')).trim();
+                }
+                toRemove.add(job);
+                isDone = true;
+            }
+
+            if (!onlyPrintDone || isDone) {
+                String statusPadded = String.format("%-24s", job.status);
+                System.out.printf("[%d]%c  %s%s\n", job.id, marker, statusPadded, job.command);
+            }
+        }
+        backgroundJobs.removeAll(toRemove);
     }
 
     private static void executeCommand(String input) {
@@ -129,28 +159,7 @@ public class Main {
                     executeCd(args);
                     break;
                 case "jobs":
-                    List<Job> toRemove = new ArrayList<>();
-                    for (int i = 0; i < backgroundJobs.size(); i++) {
-                        Job job = backgroundJobs.get(i);
-                        char marker = ' ';
-                        if (i == backgroundJobs.size() - 1) {
-                            marker = '+';
-                        } else if (i == backgroundJobs.size() - 2) {
-                            marker = '-';
-                        }
-
-                        if (!job.process.isAlive()) {
-                            job.status = "Done";
-                            if (job.command.endsWith("&")) {
-                                job.command = job.command.substring(0, job.command.lastIndexOf('&')).trim();
-                            }
-                            toRemove.add(job);
-                        }
-
-                        String statusPadded = String.format("%-24s", job.status);
-                        System.out.printf("[%d]%c  %s%s\n", job.id, marker, statusPadded, job.command);
-                    }
-                    backgroundJobs.removeAll(toRemove);
+                    printAndReapJobs(false);
                     break;
                 default:
                     String executablePath = getExecutablePath(command);
