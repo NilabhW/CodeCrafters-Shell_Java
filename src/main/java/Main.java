@@ -31,6 +31,14 @@ public class Main {
         List<String> parsedArgs = parseArguments(input);
         if (parsedArgs.isEmpty()) return;
 
+        boolean runInBackground = false;
+        if (parsedArgs.get(parsedArgs.size() - 1).equals("&")) {
+            runInBackground = true;
+            parsedArgs.remove(parsedArgs.size() - 1);
+        }
+
+        if (parsedArgs.isEmpty()) return;
+
         String command = parsedArgs.get(0);
         List<String> args = parsedArgs.subList(1, parsedArgs.size());
 
@@ -106,7 +114,7 @@ public class Main {
                 default:
                     String executablePath = getExecutablePath(command);
                     if (executablePath != null) {
-                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut, appendErr);
+                        executeExternalProgram(command, args, redirectOutFile, redirectErrFile, appendOut, appendErr, runInBackground);
                     } else {
                         System.out.println(command + ": command not found");
                     }
@@ -266,7 +274,7 @@ public class Main {
         return null;
     }
 
-    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut, boolean appendErr) {
+    private static void executeExternalProgram(String command, List<String> args, String redirectOutFile, String redirectErrFile, boolean appendOut, boolean appendErr, boolean runInBackground) {
         try {
             List<String> commandList = new ArrayList<>();
             commandList.add(command);
@@ -297,7 +305,11 @@ public class Main {
             pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
             
             Process process = pb.start();
-            process.waitFor();
+            if (runInBackground) {
+                System.out.println("[1] " + process.pid());
+            } else {
+                process.waitFor();
+            }
         } catch (Exception e) {
             System.err.println("Error executing program: " + e.getMessage());
         }
