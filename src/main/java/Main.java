@@ -13,18 +13,21 @@ public class Main {
     static class Job {
         int id;
         long pid;
+        Process process;
         String command;
         String status;
 
-        public Job(int id, long pid, String command, String status) {
+        public Job(int id, Process process, String command, String status) {
             this.id = id;
-            this.pid = pid;
+            this.pid = process.pid();
+            this.process = process;
             this.command = command;
             this.status = status;
         }
     }
 
     static List<Job> backgroundJobs = new ArrayList<>();
+    static int nextJobId = 1;
 
     public static void main(String[] args) throws Exception {
 
@@ -126,6 +129,7 @@ public class Main {
                     executeCd(args);
                     break;
                 case "jobs":
+                    List<Job> toRemove = new ArrayList<>();
                     for (int i = 0; i < backgroundJobs.size(); i++) {
                         Job job = backgroundJobs.get(i);
                         char marker = ' ';
@@ -134,9 +138,19 @@ public class Main {
                         } else if (i == backgroundJobs.size() - 2) {
                             marker = '-';
                         }
+
+                        if (!job.process.isAlive()) {
+                            job.status = "Done";
+                            if (job.command.endsWith("&")) {
+                                job.command = job.command.substring(0, job.command.lastIndexOf('&')).trim();
+                            }
+                            toRemove.add(job);
+                        }
+
                         String statusPadded = String.format("%-24s", job.status);
                         System.out.printf("[%d]%c  %s%s\n", job.id, marker, statusPadded, job.command);
                     }
+                    backgroundJobs.removeAll(toRemove);
                     break;
                 default:
                     String executablePath = getExecutablePath(command);
@@ -333,9 +347,9 @@ public class Main {
             
             Process process = pb.start();
             if (runInBackground) {
-                int jobId = backgroundJobs.size() + 1;
+                int jobId = nextJobId++;
                 System.out.println("[" + jobId + "] " + process.pid());
-                backgroundJobs.add(new Job(jobId, process.pid(), originalInput.trim(), "Running"));
+                backgroundJobs.add(new Job(jobId, process, originalInput.trim(), "Running"));
             } else {
                 process.waitFor();
             }
