@@ -27,7 +27,6 @@ public class Main {
     }
 
     static List<Job> backgroundJobs = new ArrayList<>();
-    static int nextJobId = 1;
 
     public static void main(String[] args) throws Exception {
 
@@ -356,7 +355,12 @@ public class Main {
             
             Process process = pb.start();
             if (runInBackground) {
-                int jobId = nextJobId++;
+                int jobId = 1;
+                for (Job job : backgroundJobs) {
+                    if (job.id >= jobId) {
+                        jobId = job.id + 1;
+                    }
+                }
                 System.out.println("[" + jobId + "] " + process.pid());
                 backgroundJobs.add(new Job(jobId, process, originalInput.trim(), "Running"));
             } else {
