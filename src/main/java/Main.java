@@ -76,6 +76,12 @@ public class Main {
     }
 
     private static void executeCommand(String input) {
+        List<String> pipelines = splitPipelines(input);
+        if (pipelines.size() > 1) {
+            executePipeline(pipelines, input);
+            return;
+        }
+
         List<String> parsedArgs = parseArguments(input);
         if (parsedArgs.isEmpty()) return;
 
@@ -177,6 +183,166 @@ public class Main {
                 System.err.flush();
                 System.setErr(originalErr);
             }
+        }
+    }
+
+    private static List<String> splitPipelines(String input) {
+        List<String> commands = new ArrayList<>();
+        StringBuilder currentCommand = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean inDoubleQuote = false;
+
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            if (inSingleQuote) {
+                if (c == '\'') {
+                    inSingleQuote = false;
+                }
+                currentCommand.append(c);
+            } else if (inDoubleQuote) {
+                if (c == '\\' && i + 1 < input.length()) {
+                    char nextChar = input.charAt(i + 1);
+                    if (nextChar == '\\' || nextChar == '"' || nextChar == '$' || nextChar == '`' || nextChar == '\n') {
+                        currentCommand.append(c);
+                        currentCommand.append(nextChar);
+                        i++;
+                    } else {
+                        currentCommand.append(c);
+                    }
+                } else if (c == '\"') {
+                    inDoubleQuote = false;
+                    currentCommand.append(c);
+                } else {
+                    currentCommand.append(c);
+                }
+            } else {
+                if (c == '\\' && i + 1 < input.length()) {
+                    currentCommand.append(c);
+                    currentCommand.append(input.charAt(i + 1));
+                    i++;
+                } else if (c == '\'') {
+                    inSingleQuote = true;
+                    currentCommand.append(c);
+                } else if (c == '\"') {
+                    inDoubleQuote = true;
+                    currentCommand.append(c);
+                } else if (c == '|') {
+                    commands.add(currentCommand.toString());
+                    currentCommand.setLength(0);
+                } else {
+                    currentCommand.append(c);
+                }
+            }
+        }
+        commands.add(currentCommand.toString());
+        return commands;
+    }
+
+    private static void executePipeline(List<String> pipelines, String originalInput) {
+        List<ProcessBuilder> builders = new ArrayList<>();
+        boolean runInBackground = false;
+        
+        String lastPipelineStr = pipelines.get(pipelines.size() - 1);
+        List<String> lastArgs = parseArguments(lastPipelineStr);
+        if (!lastArgs.isEmpty() && lastArgs.get(lastArgs.size() - 1).equals("&")) {
+            runInBackground = true;
+        }
+
+        for (int pIndex = 0; pIndex < pipelines.size(); pIndex++) {
+            String pStr = pipelines.get(pIndex);
+            List<String> args = parseArguments(pStr);
+            
+            if (pIndex == pipelines.size() - 1 && runInBackground) {
+                if (!args.isEmpty() && args.get(args.size() - 1).equals("&")) {
+                    args.remove(args.size() - 1);
+                }
+            }
+            if (args.isEmpty()) continue;
+
+            String command = args.get(0);
+            args = args.subList(1, args.size());
+
+            String redirectOutFile = null;
+            String redirectErrFile = null;
+            boolean appendOut = false;
+            boolean appendErr = false;
+            
+            for (int i = args.size() - 2; i >= 0; i--) {
+                String arg = args.get(i);
+                if (arg.equals(">") || arg.equals("1>")) {
+                    redirectOutFile = args.get(i + 1);
+                    appendOut = false;
+                    args = new ArrayList<>(args.subList(0, i));
+                } else if (arg.equals(">>") || arg.equals("1>>")) {
+                    redirectOutFile = args.get(i + 1);
+                    appendOut = true;
+                    args = new ArrayList<>(args.subList(0, i));
+                } else if (arg.equals("2>")) {
+                    redirectErrFile = args.get(i + 1);
+                    appendErr = false;
+                    args = new ArrayList<>(args.subList(0, i));
+                } else if (arg.equals("2>>")) {
+                    redirectErrFile = args.get(i + 1);
+                    appendErr = true;
+                    args = new ArrayList<>(args.subList(0, i));
+                }
+            }
+
+            String executablePath = getExecutablePath(command);
+            if (executablePath == null) {
+                System.out.println(command + ": command not found");
+                return;
+            }
+
+            List<String> commandList = new ArrayList<>();
+            commandList.add(command);
+            commandList.addAll(args);
+            ProcessBuilder pb = new ProcessBuilder(commandList);
+            pb.directory(new File(System.getProperty("user.dir")));
+
+            if (pIndex == pipelines.size() - 1) {
+                if (redirectOutFile != null) {
+                    pb.redirectOutput(appendOut ? ProcessBuilder.Redirect.appendTo(new File(redirectOutFile)) : ProcessBuilder.Redirect.to(new File(redirectOutFile)));
+                } else {
+                    pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                }
+            }
+            
+            if (redirectErrFile != null) {
+                pb.redirectError(appendErr ? ProcessBuilder.Redirect.appendTo(new File(redirectErrFile)) : ProcessBuilder.Redirect.to(new File(redirectErrFile)));
+            } else {
+                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+            }
+            
+            if (pIndex == 0) {
+                pb.redirectInput(ProcessBuilder.Redirect.INHERIT);
+            }
+
+            builders.add(pb);
+        }
+
+        if (builders.isEmpty()) return;
+
+        try {
+            List<Process> processes = ProcessBuilder.startPipeline(builders);
+            Process lastProcess = processes.get(processes.size() - 1);
+            if (runInBackground) {
+                int jobId = 1;
+                for (Job job : backgroundJobs) {
+                    if (job.id >= jobId) {
+                        jobId = job.id + 1;
+                    }
+                }
+                System.out.println("[" + jobId + "] " + lastProcess.pid());
+                backgroundJobs.add(new Job(jobId, lastProcess, originalInput.trim(), "Running"));
+            } else {
+                for (Process p : processes) {
+                    p.waitFor();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error executing pipeline: " + e.getMessage());
         }
     }
 
